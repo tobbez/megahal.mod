@@ -648,7 +648,16 @@ static char *istextinlist(char *text, char *list)
 	Context;
 	setlocale(LC_ALL, "");
 	wtext = locale_to_wchar(text);
+	if (!wtext) {
+		warn("istextinlist", "Failed to decode text");
+		return NULL;
+	}
 	wlist = locale_to_wchar(list);
+	if (!wlist) {
+		nfree(wtext);
+		warn("istextinlist", "Failed to decode list");
+		return NULL;
+	}
 	wchar_t buf[wcslen(wlist)+1];
 	wcscpy(buf, wlist);
 	wcsncpy(glob_buffer, wtext, 512);
@@ -675,6 +684,10 @@ static char *istextinlist2(STRING text, char *list)
 	Context;
 	setlocale(LC_ALL, "");
 	wlist = locale_to_wchar(list);
+	if (!wlist) {
+		warn("istextinlist2", "Failed to decode list");
+		return NULL;
+	}
 	wchar_t buf[wcslen(wlist)+1];
 	wcscpy(buf, wlist);
 	wcsncpy(glob_buffer, text.word, text.length);
@@ -736,6 +749,10 @@ static void do_megahal(int idx, char *prefix, char *text, bool learnit, char *ni
 
 	setlocale(LC_ALL, "");
 	wtext = locale_to_wchar(text);
+	if (!wtext) {
+		warn("do_megahal", "Failed to decode text");
+		return;
+	}
 	upper(wtext);
 	if(mystrstr(wtext, L"HTTP") != NULL) {
 		nfree(wtext);
@@ -803,6 +820,9 @@ static int pub_megahal2(char *nick, char *host, char *hand, char *channel, char 
 	Context;
 	setlocale(LC_ALL, "");
 	wtext = locale_to_wchar(text);
+	if (!wtext) {
+		return 0;
+	}
 	wcscpy(buffer,wtext);
 	nfree(wtext);
 	mystrlwr(buffer);
@@ -948,6 +968,11 @@ static int dcc_forget(struct userrec *u, int idx, char *text)
 
 	words = new_dictionary();
 	wtext = locale_to_wchar(text);
+	if(!wtext) {
+		error("dcc_forget", "Failed to decode text");
+		nfree(words);
+		return 0;
+	}
 	phrase = find_phrase(wtext, &fnd);
 	if(fnd) {
 		words->size=model->phrase[phrase][0]-1;
@@ -989,6 +1014,11 @@ static int pub_forget(char *nick, char *host, char *hand, char *channel, char *t
 
 	words = new_dictionary();
 	wtext = locale_to_wchar(text);
+	if(!wtext) {
+		error("pub_forget", "Failed to decode text");
+		nfree(words);
+		return 0;
+	}
 	phrase = find_phrase(wtext, &fnd);
 	if(fnd) {
 		words->size=model->phrase[phrase][0]-1;
@@ -1101,6 +1131,9 @@ static int pub_forgetword(char *nick, char *host, char *hand, char *channel, cha
 	Context;
 	setlocale(LC_ALL, "");
 	wtext=locale_to_wchar(text);
+	if(!wtext) {
+		error("pub_forgetword", "Failed to decode text");
+	}
 	putlog(LOG_MISC, "*", "forget %s by %s", text, hand);
 	words=new_dictionary();
 	upper(wtext);
@@ -2795,6 +2828,10 @@ static void train(MODEL *model, char *filename)
 			continue; // comments
 
 		wbuffer=locale_to_wchar(buffer);
+		if(!wbuffer) {
+			warn("train", "Failed to decode buffer: %s", buffer);
+			continue;
+		}
 		wbuffer[wcslen(wbuffer)-1] = L'\0';
 
 		upper(wbuffer);
@@ -3905,7 +3942,16 @@ static SWAP *initialize_swap(char *filename)
 		to = strtok(NULL, "\t \n#");
 		if (from && to) {
 			wchar_t * wfrom = locale_to_wchar(from);
+			if (!wfrom) {
+				warn("initialize_swap", "Failed to decode from: %s", from);
+				continue;
+			}
 			wchar_t * wto = locale_to_wchar(to);
+			if (!wto) {
+				nfree(wfrom);
+				warn("initialize_swap", "Failed to decode to: %s", from);
+				continue;
+			}
 			add_swap(list, wfrom , wto);
 		}
 	}
@@ -3969,8 +4015,17 @@ static DICTIONARY *initialize_list(char *filename)
 		string = strtok(buffer, "\t \n#");
 		if((string!=NULL) && (strlen(string)>0)) {
 			wstring = locale_to_wchar(string);
+			if(!wstring) {
+				warn("initialize_list", "Failed to decode string: %s", string);
+				continue;
+			}
 			word.length = wcslen(wstring);
 			word.word = locale_to_wchar(buffer);
+			if(!word.word) {
+				warn("initialize_list", "Failed to decode buffer: %s", buffer);
+				nfree(wstring);
+				continue;
+			}
 			add_word(list, word);
 			nfree(word.word);
 			nfree(wstring);
