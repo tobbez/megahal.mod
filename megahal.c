@@ -3101,7 +3101,7 @@ static void make_words(wchar_t *pinput, DICTIONARY *words)
 				error("make_words", "Unable to reallocate dictionary");
 				return;
 			}
-			if(((input-1)[0] != L' ') && (words->size>1))
+			if(words->size > 1 && (input-1)[0] != L' ')
 				tmp = 1;
 			words->entry[words->size-1].length = offset+tmp;
 			words->entry[words->size-1].word = (wchar_t *)nmalloc(sizeof(wchar_t)*(offset+tmp));
