@@ -1860,12 +1860,10 @@ static void error(char *title, char *fmt, ...)
 	char stuff[512];
 
 	Context;
-	sprintf(stuff, "%s: ", title);
 	va_start(argp, fmt);
 	vsprintf(stuff, fmt, argp);
 	va_end(argp);
-	sprintf(stuff, ".\n");
-	putlog(LOG_MISC, "*", "%s", stuff);
+	putlog(LOG_MISC, "*", "megahal: %s: %s", title, stuff);
 
 	/* FIXME - I think I need to die here */
 }
@@ -1878,12 +1876,10 @@ static bool warn(char *title, char *fmt, ...)
 	char stuff[512];
 
 	Context;
-	sprintf(stuff, "%s: ", title);
 	va_start(argp, fmt);
 	vsprintf(stuff, fmt, argp);
 	va_end(argp);
-	sprintf(stuff, ".\n");
-	putlog(LOG_MISC, "*", "%s", stuff);
+	putlog(LOG_MISC, "*", "megahal: %s: %s", title, stuff);
 	return TRUE;
 }
 
