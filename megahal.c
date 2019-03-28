@@ -214,9 +214,11 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <locale.h>
+#include <errno.h>
 #include <wctype.h>
 #define __USE_UNIX98
 #include <wchar.h>
+#include <iconv.h>
 #include "megahal.h"
 /* End megahal preproc directives */
 #include "../module.h"
@@ -340,30 +342,62 @@ static Function megahal_table[] =
 
 static wchar_t *locale_to_wchar(char *str)
 {
-	wchar_t *ptr;
+	iconv_t *cd;
 	size_t s;
 
+	wchar_t buf[4096];
+
+	size_t inbytesleft;
+	char *inbuf;
+
+	size_t outbytesleft;
+	char *outbuf;
+
 	Context;
-	/* first arg == NULL means 'calculate needed space' */
-	s = mbstowcs(NULL, str, 0);
 
-	/* a size of -1 is triggered by an error in encoding; never
-	   happen in ISO-8859-* locales, but possible in UTF-8 */
-	if(s == -1)
+	/* first, attempt to decode as utf-8 */
+	if ((cd = iconv_open("WCHAR_T", "UTF-8")) == (iconv_t)-1) {
+		putlog(LOG_MISC, "*", "locale_to_wchar: iconv_open (utf-8) failed: %i: %s", errno, strerror(errno));
 		return NULL;
+	}
+	inbuf = str;
+	inbytesleft = strlen(str);
+	outbuf = (char*)buf;
+	outbytesleft = sizeof(buf);
+	if ((s = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft)) == -1) {
+		/* decoding from utf-8 failed, use iso-8859-1 instead */
+		iconv_close(cd);
+		if ((cd = iconv_open("WCHAR_T", "ISO-8859-1")) == (iconv_t)-1) {
+			putlog(LOG_MISC, "*", "locale_to_wchar: iconv_open (iso-8859-1) failed: %i: %s", errno, strerror(errno));
+			return NULL;
+		}
+		inbuf = str;
+		inbytesleft = strlen(str);
+		outbuf = (char*)buf;
+		outbytesleft = sizeof(buf);
+		if ((s = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft)) == -1) {
+			/* iso-8859-1 failed as well, give up */
+			/* this should typically never happen, since no byte
+			 * sequences are invalid in iso-8859-1 */
+			putlog(LOG_MISC, "*", "locale_to_wchar: failed to decode input as both utf-8 and iso-8859-1. %i: %s", errno, strerror(errno));
+			iconv_close(cd);
+			return NULL;
+		}
+	}
+	iconv_close(cd);
 
-	/* malloc the necessary space */
-	if((ptr = (wchar_t *)nmalloc((s+1)*sizeof(wchar_t))) == NULL)
+	/* decoding as either utf-8 or iso-8859-1 succeeded */
+	/* allocate memory for the converted string on the heap and return it */
+	size_t ret_chars = (wchar_t*)outbuf - buf;
+	wchar_t *ret;
+	if (!(ret = nmalloc((ret_chars+1) * sizeof(*buf)))) {
+		putlog(LOG_MISC, "*", "locale_to_wchar: Failed to allocate memory for ret (malloc returned null): %s", strerror(errno));
 		return NULL;
+	}
+	wcsncpy(ret, buf, ret_chars);
+	ret[ret_chars] = L'\0';
+	return ret;
 
-	/* really do it */
-	mbstowcs(ptr, str, s);
-
-	/* ensure NULL-termination */
-	ptr[s] = L'\0';
-
-	/* remember to free() ptr when done */
-	return ptr;
 }
 
 static char *wchar_to_locale(wchar_t *str)
