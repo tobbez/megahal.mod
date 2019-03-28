@@ -1666,10 +1666,17 @@ static int tcl_reloadbrain STDVAR
 
 static int tcl_setmegabotnick STDVAR
 {
+	wchar_t *wmbotnick;
 	Context;
 	setlocale(LC_ALL, "");
 	BADARGS(2, 2, " <botnick>");
-	wcscpy(mbotnick,locale_to_wchar(argv[1]));
+	wmbotnick = locale_to_wchar(argv[1]);
+	if(!wmbotnick) {
+		error("tcl_setmegabotnick", "Failed to decode argv[1]: %s", argv[1]);
+		return TCL_ERROR;
+	}
+	wcscpy(mbotnick, wmbotnick);
+	nfree(wmbotnick);
 	mystrlwr(mbotnick);
 	return TCL_OK;
 }
