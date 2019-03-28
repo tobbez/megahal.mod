@@ -4086,7 +4086,7 @@ static void load_personality(MODEL **model)
 		return;
 	}
 	fclose(file);
-	putlog(LOG_MISC, "*", "Changing to MegaHAL personality brains = \"%s\", train = \"%s\".\n", directory_cache, directory_resources);
+	putlog(LOG_MISC, "*", "Changing to MegaHAL personality brains = \"%s\", train = \"%s\".", directory_cache, directory_resources);
 
 	/*
 	 *	Free the current personality
