@@ -812,6 +812,7 @@ static int pub_megahal2(char *nick, char *host, char *hand, char *channel, char 
 	char prefix[strlen(channel) + strlen(nick) + 13], *keyword = NULL;
 	wchar_t buffer[512] = L"";
 	wchar_t *wtext;
+	wchar_t *wkeyword = NULL;
 
 	int i, pos;
 	struct chanset_t *chan = findchan(channel);
@@ -855,22 +856,28 @@ static int pub_megahal2(char *nick, char *host, char *hand, char *channel, char 
 		}
 		if(!keyword)
 			keyword = wchar_to_locale(mbotnick);
+		wkeyword = locale_to_wchar(keyword);
+		if(!wkeyword) {
+			error("pub_megahal2", "Failed to decode keyword: %s", keyword);
+			return 0;
+		}
 		// if keyword used in beginning or end of phrase, learn it
-		if(wordcmp2(words->entry[0], locale_to_wchar(keyword))==0 || wordcmp2(words->entry[(words->size)-2], locale_to_wchar(keyword))==0) { // -2 to exclude the period
+		if(wordcmp2(words->entry[0], wkeyword)==0 || wordcmp2(words->entry[(words->size)-2], wkeyword)==0) { // -2 to exclude the period
 			learnit = TRUE;
 			sprintf(prefix, "PRIVMSG %s :%s: ", channel, nick);
 		} else {
 			sprintf(prefix, "PRIVMSG %s :%s, ", channel, nick);
 		}
 		// remove the botnick from the text
-		if(mystrstr(buffer, locale_to_wchar(keyword))) {
-			pos = (int)(mystrstr(buffer, locale_to_wchar(keyword)) - buffer);
-			for(i=pos; i<(wcslen(buffer)-wcslen(locale_to_wchar(keyword))); i++)
-				buffer[i] = buffer[i+wcslen(locale_to_wchar(keyword))];
+		if(mystrstr(buffer, wkeyword)) {
+			pos = (int)(mystrstr(buffer, wkeyword) - buffer);
+			for(i=pos; i<(wcslen(buffer)-wcslen(wkeyword)); i++)
+				buffer[i] = buffer[i+wcslen(wkeyword)];
 			buffer[i]=L'\0';
 		}
 		char *lbuffer=wchar_to_locale(buffer);
 		do_megahal(DP_HELP, prefix, lbuffer, learnit, nick, channel);
+		nfree(wkeyword);
 		nfree(lbuffer);
 		return 0;
 	}
